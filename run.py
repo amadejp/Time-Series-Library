@@ -98,7 +98,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_amp', action='store_true', help='use automatic mixed precision training', default=False)
 
     # GPU
-    parser.add_argument('--use_gpu', type=bool, default=True, help='use gpu')
+    parser.add_argument('--use_gpu', type=bool, default=False, help='use gpu')
     parser.add_argument('--gpu', type=int, default=0, help='gpu')
     parser.add_argument('--gpu_type', type=str, default='cuda', help='gpu type')  # cuda or mps
     parser.add_argument('--use_multi_gpu', action='store_true', help='use multiple gpus', default=False)
