@@ -19,13 +19,13 @@ description="TimeXer_EV_Occupancy_Forecast"
 python -u run.py \
   --task_name long_term_forecast \
   --is_training 1 \
-  --root_path ./my_ev_data/      `# MODIFIED: Path to your data directory` \
-  --data_path all_data.csv       `# MODIFIED: Your CSV file name` \
+  --root_path ./my_data/      `# MODIFIED: Path to your data directory` \
+  --data_path inesctec_occupancy_ts.csv       `# MODIFIED: Your CSV file name` \
   --model_id $experiment_id      `# MODIFIED: Your experiment ID` \
   --model $model_name \
   --data custom \
   --features MS \
-  --target occupancy             `# ADDED: Specify your target column name` \
+  --target n_active_sessions_grid             `# ADDED: Specify your target column name` \
   --seq_len 72                   `# MODIFIED: Your sequence length` \
   --label_len 0                  `# MODIFIED: Your label length (TimeXer shown doesn't use x_dec)` \
   --pred_len 24                  `# MODIFIED: Your prediction length` \
@@ -41,7 +41,7 @@ python -u run.py \
   --factor 3                     `# REQUIRED (Example value, bash used 3)` \
   --embed 'fixed'                `# REQUIRED for DataEmbedding_inverted` \
   --freq 'h'                     `# REQUIRED for DataEmbedding_inverted (your data frequency)` \
-  --use_norm True                `# REQUIRED by TimeXer's forecast methods` \
+  --use_norm 1                `# REQUIRED by TimeXer's forecast methods` \
   \
   `# --- Input/Output dimensions for YOUR data ---` \
   --enc_in 14                    `# MODIFIED: 1 (target) + 13 (exog features)` \
@@ -56,7 +56,3 @@ python -u run.py \
   --train_epochs 20 \
   --itr 1 \
   \
-  `# --- To run on CPU ---` \
-  --use_gpu False                `# ADDED: Explicitly tell it not to use GPU`
-  # If --use_gpu False is not an option in run.py, you might need to
-  # ensure your environment is CPU-only or set CUDA_VISIBLE_DEVICES="-1" (system dependent)
