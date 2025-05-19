@@ -253,6 +253,7 @@ class Dataset_Custom(Dataset):
         border2s = [num_train, num_train + num_vali, len(df_raw)]
         border1 = border1s[self.set_type]
         border2 = border2s[self.set_type]
+        self.raw_dates = pd.to_datetime(df_raw['date'].iloc[border1:border2]).values # store raw dates for test purposes
 
         if self.features == 'M' or self.features == 'MS':
             cols_data = df_raw.columns[1:]

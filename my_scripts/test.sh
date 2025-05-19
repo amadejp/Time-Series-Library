@@ -1,8 +1,8 @@
 # To run on CPU, change default for argument --use-gpu in run.py
 
 model_name=TimeXer
-experiment_id="EV_TimeXer_72_24" # Unique ID for this run
-description="TimeXer_EV_Occupancy_Forecast"
+experiment_id="test" # Unique ID for this run
+description="TimeXer_test"
 
 # --- Define parameters needed by TimeXer.py __init__ ---
 # These might have defaults in run.py, but it's safer to be explicit if unsure.
@@ -23,10 +23,10 @@ python -u run.py \
   \
   `# --- TimeXer specific parameters (from TimeXer.py __init__) ---` \
   --patch_len 12                 `# REQUIRED for TimeXer (e.g., 72/12=6)` \
-  --d_model 128                  `# REQUIRED (Example value)` \
+  --d_model 64                  `# REQUIRED (Example value)` \
   --n_heads 8                    `# REQUIRED (Example value)` \
   --e_layers 2                   `# REQUIRED (Example value, bash used 1 or 3)` \
-  --d_ff 256                     `# REQUIRED (Example value)` \
+  --d_ff 128                     `# REQUIRED (Example value)` \
   --dropout 0.1                  `# REQUIRED (Example value)` \
   --activation 'gelu'            `# REQUIRED (Example value)` \
   --factor 3                     `# REQUIRED (Example value, bash used 3)` \
@@ -44,6 +44,6 @@ python -u run.py \
   --batch_size 32                `# MODIFIED: Your preferred batch size` \
   --learning_rate 0.0001         `# Often good for transformers` \
   --patience 5 \
-  --train_epochs 20 \
+  --train_epochs 1 \
   --itr 1 \
   \

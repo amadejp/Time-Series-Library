@@ -232,6 +232,14 @@ class Exp_Long_Term_Forecast(Exp_Basic):
         trues = trues.reshape(-1, trues.shape[-2], trues.shape[-1])
         print('test shape:', preds.shape, trues.shape)
 
+        # ADDING RAW DATES, corrected for seq_len
+        original_split_datetimes = test_data.raw_dates  # datetimes for test split
+        num_test_samples_from_preds = preds.shape[0]
+        start_index_for_slicing = self.args.seq_len
+        end_index_for_slicing = self.args.seq_len + num_test_samples_from_preds
+        if end_index_for_slicing <= len(original_split_datetimes):
+            pred_start_datetimes = original_split_datetimes[start_index_for_slicing: end_index_for_slicing]
+
         # result save
         folder_path = './results/' + setting + '/'
         if not os.path.exists(folder_path):
@@ -264,5 +272,6 @@ class Exp_Long_Term_Forecast(Exp_Basic):
         np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe]))
         np.save(folder_path + 'pred.npy', preds)
         np.save(folder_path + 'true.npy', trues)
+        np.save(folder_path + 'pred_start_dates.npy', np.array(pred_start_datetimes, dtype=object))
 
         return
