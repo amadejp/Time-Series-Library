@@ -177,11 +177,9 @@ if __name__ == '__main__':
         for ii in range(args.itr):
             # setting record of experiments
             exp = Exp(args)  # set experiments
-            setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_expand{}_dc{}_fc{}_eb{}_dt{}_{}_{}'.format(
-                args.task_name,
+            setting = '{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_dc{}_fc{}_{}_{}'.format(
                 args.model_id,
                 args.model,
-                args.data,
                 args.features,
                 args.seq_len,
                 args.label_len,
@@ -191,11 +189,8 @@ if __name__ == '__main__':
                 args.e_layers,
                 args.d_layers,
                 args.d_ff,
-                args.expand,
                 args.d_conv,
                 args.factor,
-                args.embed,
-                args.distil,
                 args.des, ii)
 
             print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
@@ -210,11 +205,9 @@ if __name__ == '__main__':
     else:
         exp = Exp(args)  # set experiments
         ii = 0
-        setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_expand{}_dc{}_fc{}_eb{}_dt{}_{}_{}'.format(
-            args.task_name,
+        setting = '{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_dc{}_fc{}_{}_{}'.format(
             args.model_id,
             args.model,
-            args.data,
             args.features,
             args.seq_len,
             args.label_len,
@@ -224,11 +217,8 @@ if __name__ == '__main__':
             args.e_layers,
             args.d_layers,
             args.d_ff,
-            args.expand,
             args.d_conv,
             args.factor,
-            args.embed,
-            args.distil,
             args.des, ii)
 
         print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
