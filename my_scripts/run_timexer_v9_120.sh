@@ -2,7 +2,7 @@
 
 model_name=TimeXer
 experiment_id="EV_TimeXer_120_24_v9"
-description="TimeXer_Seq120_Patch24_BS16_LR1e-4_Drop0.15_Cosine"
+description="TimeXer_Seq120_Patch24_BS16_LR1e-4_Drop0.15"
 
 echo "--- Running Experiment: $experiment_id ---"
 
@@ -36,9 +36,7 @@ python -u run.py \
   --des "$description" \
   --batch_size 16 \
   --learning_rate 0.0001 \
-  --lradj 'cosine' `# Explicitly using cosine scheduler` \
-  --patience 5     `# Slightly more patience` \
-  --train_epochs 60 `# Potentially more epochs` \
-  --itr 1 \
+  --patience 5 \
+  --train_epochs 60 \
 
 echo "--- Experiment $experiment_id Finished ---"
