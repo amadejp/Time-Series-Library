@@ -29,7 +29,7 @@ python -u run.py \
   --factor 3 \
   --embed 'fixed' \
   --freq 'h' \
-  --use_norm 1 \
+  --use_norm 0 \
   --enc_in 14 \
   --dec_in 14 \
   --c_out 1 \
