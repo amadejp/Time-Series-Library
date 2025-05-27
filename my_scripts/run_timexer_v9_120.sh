@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 model_name=TimeXer
-experiment_id="v9_AFsigmoid"
+experiment_id="v9_OutAFsigmoid"
 description="BS16_LR1e-4_Drop0.15"
 
 echo "--- Running Experiment: $experiment_id ---"
@@ -25,7 +25,7 @@ python -u run.py \
   --e_layers 2 \
   --d_ff 512 \
   --dropout 0.15 \
-  --activation 'sigmoid' \
+  --activation 'gelu' \
   --factor 3 \
   --embed 'fixed' \
   --freq 'h' \
