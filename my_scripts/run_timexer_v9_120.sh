@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 model_name=TimeXer
-experiment_id="EV_TimeXer_120_24_v9"
-description="TimeXer_Seq120_Patch24_BS16_LR1e-4_Drop0.15"
+experiment_id="v9_AFsigmoid"
+description="BS16_LR1e-4_Drop0.15"
 
 echo "--- Running Experiment: $experiment_id ---"
 
@@ -25,7 +25,7 @@ python -u run.py \
   --e_layers 2 \
   --d_ff 512 \
   --dropout 0.15 \
-  --activation 'gelu' \
+  --activation 'sigmoid' \
   --factor 3 \
   --embed 'fixed' \
   --freq 'h' \
