@@ -154,12 +154,6 @@ class Model(nn.Module):
         self.head = FlattenHead(configs.enc_in, self.head_nf, configs.pred_len,
                                 head_dropout=configs.dropout)
 
-        # ADD SIGMOID OUTPUT
-        self.apply_final_sigmoid = True  # hardcoded to True for my experiment
-        if self.apply_final_sigmoid:
-            self.final_sigmoid = nn.Sigmoid()
-        #
-
     def forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec):
         if self.use_norm:
             # Normalization from Non-stationary Transformer
@@ -183,7 +177,6 @@ class Model(nn.Module):
         dec_out = dec_out.permute(0, 2, 1)
 
         if self.use_norm:
-            print("!DENORMALIZING!")
             # De-Normalization from Non-stationary Transformer
             dec_out = dec_out * (stdev[:, 0, -1:].unsqueeze(1).repeat(1, self.pred_len, 1))
             dec_out = dec_out + (means[:, 0, -1:].unsqueeze(1).repeat(1, self.pred_len, 1))
@@ -196,7 +189,6 @@ class Model(nn.Module):
 
     def forecast_multi(self, x_enc, x_mark_enc, x_dec, x_mark_dec):
         if self.use_norm:
-            print("NORMALIZING!")
             # Normalization from Non-stationary Transformer
             means = x_enc.mean(1, keepdim=True).detach()
             x_enc = x_enc - means
@@ -221,11 +213,6 @@ class Model(nn.Module):
             # De-Normalization from Non-stationary Transformer
             dec_out = dec_out * (stdev[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
             dec_out = dec_out + (means[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
-
-        # ADD THIS LINE TO APPLY SIGMOID
-        if hasattr(self, 'apply_final_sigmoid') and self.apply_final_sigmoid:
-            dec_out = self.final_sigmoid(dec_out)
-        # END OF ADDED LINE
 
         return dec_out
 
