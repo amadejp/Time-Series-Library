@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 model_name=TimeXer
-experiment_id="v9_OutAFsigmoid"
+experiment_id="v9_numsessions"
 description="BS16_LR1e-4_Drop0.15"
 
 echo "--- Running Experiment: $experiment_id ---"
@@ -10,12 +10,12 @@ python -u run.py \
   --task_name long_term_forecast \
   --is_training 1 \
   --root_path ./my_data/ \
-  --data_path inesctec_occupancy_ts.csv \
+  --data_path inesctec_num_active_sessions_ts.csv \
   --model_id $experiment_id \
   --model $model_name \
   --data custom \
   --features MS \
-  --target occupancy \
+  --target num_active_sessions \
   --seq_len 120 \
   --label_len 0 \
   --pred_len 24 \
