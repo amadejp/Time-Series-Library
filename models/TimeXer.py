@@ -181,9 +181,6 @@ class Model(nn.Module):
             dec_out = dec_out * (stdev[:, 0, -1:].unsqueeze(1).repeat(1, self.pred_len, 1))
             dec_out = dec_out + (means[:, 0, -1:].unsqueeze(1).repeat(1, self.pred_len, 1))
 
-        if hasattr(self, 'apply_final_sigmoid') and self.apply_final_sigmoid:
-            dec_out = self.final_sigmoid(dec_out)
-
         return dec_out
 
 
