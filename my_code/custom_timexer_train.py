@@ -7,12 +7,8 @@ import pandas as pd
 from argparse import Namespace
 import os
 import time
-# <<<< START MODIFICATION: Add freeze_support for multiprocessing >>>>
 from multiprocessing import freeze_support  # For Windows
-# <<<< END MODIFICATION >>>>
 
-
-# These imports should be fine at the top level
 from models.TimeXer_custom import Model as TimeXerModel
 from data_provider.custom_dataset import PreprocessedDataset
 from utils.metrics import metric
@@ -140,16 +136,13 @@ def main():
     test_dataset = PreprocessedDataset(X_history_test, X_known_past_test, X_known_future_test, y_test)
 
     batch_size = 32
-    # <<<< START MODIFICATION: Set num_workers to 0 for initial debugging on Windows >>>>
-    # If this works, you can try increasing num_workers again.
-    # If issues persist with num_workers > 0, then uncomment freeze_support() at the start of main().
+    # num_workers to 0 for Windows >>>>
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0,
                               pin_memory=True if device.type == 'cuda' else False)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0,
                             pin_memory=True if device.type == 'cuda' else False)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0,
                              pin_memory=True if device.type == 'cuda' else False)
-    # <<<< END MODIFICATION >>>>
 
     model = TimeXerModel(configs).to(device)
     criterion = nn.MSELoss()
@@ -275,4 +268,3 @@ def main():
 if __name__ == '__main__':
     freeze_support()  # Important for Windows when using multiprocessing with spawn
     main()
-# <<<< END MODIFICATION >>>>
