@@ -1,3 +1,6 @@
 horizon_features_v1_EV_TimeXer_Custom_120_24_v2_ftTimeXerCustom_slMS_pl120_dm24_nh128_el8_df2_eb512_dtfixed_False  
 mse:0.0215, mae:0.1031, rmse:0.1465, mape:inf, mspe:inf
 
+horizon_features_EV_TimeXer_Custom_120_24_ftTimeXerCustom_slMS_pl120_dm24_nh256_el8_df2_eb512_dtfixed_False  
+mse:0.0175, mae:0.0895, rmse:0.1321, mape:inf, mspe:inf
+

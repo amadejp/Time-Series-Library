@@ -68,15 +68,7 @@ class EarlyStopping:
         self.val_loss_min = val_loss
 
 
-# <<<< START MODIFICATION: Wrap main execution in if __name__ == '__main__': >>>>
 def main():
-    # <<<< START MODIFICATION: Call freeze_support() >>>>
-    # freeze_support() # Call this early if needed, typically right after imports or start of main
-    # For PyTorch DataLoader, it's often implicitly handled or not strictly required if __name__ == '__main__' is used.
-    # However, it's good practice if you build executables.
-    # Let's try without it first, as the __name__ guard is usually sufficient for scripts.
-    # If issues persist, uncomment it.
-    # <<<< END MODIFICATION >>>>
 
     # Load train, validation, and test data
     X_history_train, X_known_past_train, X_known_future_train, y_train, interval_dates_train = load_data("train")
@@ -84,15 +76,15 @@ def main():
     X_history_test, X_known_past_test, X_known_future_test, y_test, interval_dates_test = load_data("test")
 
     # --- Configuration for TimeXer ---
-    model_id = "EV_TimeXer_Custom_120_24_v1"
+    model_id = "EV_TimeXer_Custom_120_24"
     setting = '{}_{}_ft{}_sl{}_pl{}_dm{}_nh{}_el{}_df{}_eb{}_dt{}_{}'.format(
-        'horizon_features_v1',
+        'horizon_features',
         model_id,
         'TimeXerCustom',
         'MS',
         120,
         24,
-        128,
+        256,
         8,
         2,
         512,
@@ -119,7 +111,7 @@ def main():
         enc_in=14,
         dec_in=13,
         c_out=1,
-        d_model=128,
+        d_model=256,
         n_heads=8,
         e_layers=2,
         d_ff=512,
