@@ -1,4 +1,3 @@
-# train_script.py
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -6,12 +5,21 @@ from torch.utils.data import DataLoader
 import numpy as np
 import pandas as pd
 from argparse import Namespace
+import os
+import time
+# <<<< START MODIFICATION: Add freeze_support for multiprocessing >>>>
+from multiprocessing import freeze_support  # For Windows
+# <<<< END MODIFICATION >>>>
 
-# Assuming timexer_model.py and custom_dataset.py are in the same directory or accessible
+
+# These imports should be fine at the top level
 from models.TimeXer_custom import Model as TimeXerModel
 from data_provider.custom_dataset import PreprocessedDataset
+from utils.metrics import metric
+from utils.tools import visual
 
-# --- Load Data ---
+
+# --- Load Data Function ---
 def load_data(data_type, base_path="../my_data/train70_val10_test20_winlen120/"):
     X_history = np.load(f"{base_path}{data_type}/X_history_target.npy")
     X_known_past = np.load(f"{base_path}{data_type}/X_known_past_exog_features.npy")
@@ -21,91 +29,258 @@ def load_data(data_type, base_path="../my_data/train70_val10_test20_winlen120/")
     interval_dates = pd.to_datetime(interval_dates)
     return X_history, X_known_past, X_known_future, y, interval_dates
 
-# Load train and validation data
-X_history_train, X_known_past_train, X_known_future_train, y_train, interval_dates_train = load_data("train")
-X_history_val, X_known_past_val, X_known_future_val, y_val, interval_dates_val = load_data("val")
 
-# --- Configuration for TimeXer ---
-configs = Namespace(
-    task_name='long_term_forecast',
-    features='MS',  # Multivariate input (X_known_past+X_history), Single target prediction (y_train)
-    seq_len=120,
-    pred_len=24,
-    label_len=0,  # Not strictly used by TimeXer if x_mark_dec is pred_len long
-    patch_len=24,  # From your bash script
-    enc_in=14,  # X_known_past (13) + X_history (1) = 14
-    dec_in=13,  # Number of features in X_known_future (used for num_future_covariates)
-    c_out=1,  # Number of target variables in y_train
-    d_model=128,
-    n_heads=8,
-    e_layers=2,
-    d_ff=512,
-    dropout=0.15,
-    activation='gelu',
-    factor=3,
-    embed='fixed',  # For DataEmbedding_inverted
-    freq='h',  # For DataEmbedding_inverted, might not be critical if not using its time features
-    use_norm=False,  # Or False, based on your data scaling. If data is already 0-1, maybe False.
-    # num_future_covariates = 13 # Can be explicit if dec_in is not used for this
-)
+# --- Early Stopping Class ---
+class EarlyStopping:
+    def __init__(self, patience=7, verbose=False, delta=0, path='checkpoint.pth', trace_func=print):
+        self.patience = patience
+        self.verbose = verbose
+        self.counter = 0
+        self.best_score = None
+        self.early_stop = False
+        self.val_loss_min = np.Inf
+        self.delta = delta
+        self.path = path
+        self.trace_func = trace_func
 
-# --- Device ---
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {device}")
+    def __call__(self, val_loss, model):
+        score = -val_loss
+        if self.best_score is None:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model)
+        elif score < self.best_score + self.delta:
+            self.counter += 1
+            self.trace_func(f'EarlyStopping counter: {self.counter} out of {self.patience}')
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model)
+            self.counter = 0
 
-# --- Datasets and DataLoaders ---
-train_dataset = PreprocessedDataset(X_history_train, X_known_past_train, X_known_future_train, y_train)
-val_dataset = PreprocessedDataset(X_history_val, X_known_past_val, X_known_future_val, y_val)
+    def save_checkpoint(self, val_loss, model):
+        if self.verbose:
+            self.trace_func(
+                f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
+        # Ensure the directory for the path exists
+        os.makedirs(os.path.dirname(self.path), exist_ok=True)
+        torch.save(model.state_dict(), self.path)
+        self.val_loss_min = val_loss
 
-batch_size = 32  # Example
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-# --- Model, Criterion, Optimizer ---
-model = TimeXerModel(configs).to(device)
-criterion = nn.MSELoss()  # Or nn.L1Loss()
-optimizer = optim.Adam(model.parameters(), lr=0.0001)
+# <<<< START MODIFICATION: Wrap main execution in if __name__ == '__main__': >>>>
+def main():
+    # <<<< START MODIFICATION: Call freeze_support() >>>>
+    # freeze_support() # Call this early if needed, typically right after imports or start of main
+    # For PyTorch DataLoader, it's often implicitly handled or not strictly required if __name__ == '__main__' is used.
+    # However, it's good practice if you build executables.
+    # Let's try without it first, as the __name__ guard is usually sufficient for scripts.
+    # If issues persist, uncomment it.
+    # <<<< END MODIFICATION >>>>
 
-# --- Training Loop ---
-epochs = 10  # Example
-for epoch in range(epochs):
-    model.train()
-    train_loss = 0
-    for batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec, batch_y in train_loader:
-        batch_x_enc = batch_x_enc.to(device)
-        batch_x_mark_enc = batch_x_mark_enc.to(device)
-        batch_x_dec = batch_x_dec.to(device)
-        batch_x_mark_dec = batch_x_mark_dec.to(device)
-        batch_y = batch_y.to(device)
+    # Load train, validation, and test data
+    X_history_train, X_known_past_train, X_known_future_train, y_train, interval_dates_train = load_data("train")
+    X_history_val, X_known_past_val, X_known_future_val, y_val, interval_dates_val = load_data("val")
+    X_history_test, X_known_past_test, X_known_future_test, y_test, interval_dates_test = load_data("test")
 
-        optimizer.zero_grad()
-        # Model's forward: forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask=None)
-        outputs = model(batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec)
+    # --- Configuration for TimeXer ---
+    model_id = "EV_TimeXer_Custom_120_24_v1"
+    setting = '{}_{}_ft{}_sl{}_pl{}_dm{}_nh{}_el{}_df{}_eb{}_dt{}_{}'.format(
+        'horizon_features_v1',
+        model_id,
+        'TimeXerCustom',
+        'MS',
+        120,
+        24,
+        128,
+        8,
+        2,
+        512,
+        'fixed',
+        False,
+        time.strftime("%Y%m%d_%H%M%S")
+    )
+    checkpoints_path = f'../checkpoints/{setting}/'
+    results_path = f'../results/{setting}/'
+    test_results_figures_path = f'../test_results/{setting}/'
 
-        loss = criterion(outputs, batch_y)
-        loss.backward()
-        optimizer.step()
-        train_loss += loss.item()
+    # Create directories if they don't exist
+    os.makedirs(checkpoints_path, exist_ok=True)
+    os.makedirs(results_path, exist_ok=True)
+    os.makedirs(test_results_figures_path, exist_ok=True)
 
-    avg_train_loss = train_loss / len(train_loader)
+    configs = Namespace(
+        task_name='long_term_forecast',
+        features='MS',
+        seq_len=120,
+        pred_len=24,
+        label_len=0,
+        patch_len=24,
+        enc_in=14,
+        dec_in=13,
+        c_out=1,
+        d_model=128,
+        n_heads=8,
+        e_layers=2,
+        d_ff=512,
+        dropout=0.15,
+        activation='gelu',
+        factor=3,
+        embed='fixed',
+        freq='h',
+        use_norm=False,
+        inverse=False,
+        checkpoints=checkpoints_path.rsplit('/', 1)[0] + '/',  # Corrected parent dir
+        model_id=model_id,
+        model='TimeXerCustom',
+        data='customEV',
+        des='CustomRun',
+        patience=5,
+        learning_rate=0.0001,
+        train_epochs=60,
+    )
 
-    # Validation
-    model.eval()
-    val_loss = 0
-    with torch.no_grad():
-        for batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec, batch_y in val_loader:
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
+    train_dataset = PreprocessedDataset(X_history_train, X_known_past_train, X_known_future_train, y_train)
+    val_dataset = PreprocessedDataset(X_history_val, X_known_past_val, X_known_future_val, y_val)
+    test_dataset = PreprocessedDataset(X_history_test, X_known_past_test, X_known_future_test, y_test)
+
+    batch_size = 32
+    # <<<< START MODIFICATION: Set num_workers to 0 for initial debugging on Windows >>>>
+    # If this works, you can try increasing num_workers again.
+    # If issues persist with num_workers > 0, then uncomment freeze_support() at the start of main().
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0,
+                              pin_memory=True if device.type == 'cuda' else False)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0,
+                            pin_memory=True if device.type == 'cuda' else False)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0,
+                             pin_memory=True if device.type == 'cuda' else False)
+    # <<<< END MODIFICATION >>>>
+
+    model = TimeXerModel(configs).to(device)
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=configs.learning_rate)
+
+    # Correct path for early stopping checkpoint
+    early_stopping_checkpoint_path = os.path.join(checkpoints_path, 'checkpoint.pth')
+    early_stopping = EarlyStopping(patience=configs.patience, verbose=True, path=early_stopping_checkpoint_path)
+
+    print(f"Starting training for setting: {setting}")
+    for epoch in range(configs.train_epochs):
+        model.train()
+        train_loss_epoch = []
+        epoch_time_start = time.time()
+
+        for i, (batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec, batch_y) in enumerate(train_loader):
             batch_x_enc = batch_x_enc.to(device)
             batch_x_mark_enc = batch_x_mark_enc.to(device)
             batch_x_dec = batch_x_dec.to(device)
             batch_x_mark_dec = batch_x_mark_dec.to(device)
             batch_y = batch_y.to(device)
 
+            optimizer.zero_grad()
             outputs = model(batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec)
             loss = criterion(outputs, batch_y)
-            val_loss += loss.item()
+            loss.backward()
+            optimizer.step()
+            train_loss_epoch.append(loss.item())
 
-    avg_val_loss = val_loss / len(val_loader)
-    print(f"Epoch [{epoch + 1}/{epochs}], Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}")
+            if (i + 1) % 100 == 0:
+                print(
+                    f"\tEpoch {epoch + 1}, Iteration {i + 1}/{len(train_loader)} | Current Batch Loss: {loss.item():.7f}")
 
-# --- Save Model (Example) ---
-torch.save(model.state_dict(), "checkpoints/custom_timexer/test1.pth")
+        avg_train_loss = np.average(train_loss_epoch) if train_loss_epoch else 0
+        epoch_duration = time.time() - epoch_time_start
+
+        model.eval()
+        val_loss_epoch = []
+        with torch.no_grad():
+            for batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec, batch_y in val_loader:
+                batch_x_enc = batch_x_enc.to(device)
+                batch_x_mark_enc = batch_x_mark_enc.to(device)
+                batch_x_dec = batch_x_dec.to(device)
+                batch_x_mark_dec = batch_x_mark_dec.to(device)
+                batch_y = batch_y.to(device)
+                outputs = model(batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec)
+                loss = criterion(outputs, batch_y)
+                val_loss_epoch.append(loss.item())
+
+        avg_val_loss = np.average(val_loss_epoch) if val_loss_epoch else 0
+        print(
+            f"Epoch [{epoch + 1}/{configs.train_epochs}] ({epoch_duration:.2f}s) -> Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}")
+
+        early_stopping(avg_val_loss, model)
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
+
+    print("Loading best model for testing...")
+    best_model_path = early_stopping_checkpoint_path  # Use the path from early stopping
+    if os.path.exists(best_model_path):
+        model.load_state_dict(torch.load(best_model_path, map_location=device))  # Add map_location
+    else:
+        print(f"Warning: Best model checkpoint not found at {best_model_path}. Using last state of the model.")
+
+    print("\n--- Starting Testing ---")
+    model.eval()
+    preds_list = []
+    trues_list = []
+    first_batch_input_x_for_plot = None
+
+    with torch.no_grad():
+        for i, (batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec, batch_y) in enumerate(test_loader):
+            batch_x_enc_device = batch_x_enc.to(device)
+            batch_x_mark_enc_device = batch_x_mark_enc.to(device)
+            batch_x_dec_device = batch_x_dec.to(device)
+            batch_x_mark_dec_device = batch_x_mark_dec.to(device)
+            outputs = model(batch_x_enc_device, batch_x_mark_enc_device, batch_x_dec_device, batch_x_mark_dec_device)
+            preds_list.append(outputs.detach().cpu().numpy())
+            trues_list.append(batch_y.numpy())
+            if i == 0 and batch_x_enc.shape[0] > 0:
+                first_batch_input_x_for_plot = batch_x_enc[0, :, -1].numpy()
+
+    preds = np.concatenate(preds_list, axis=0)
+    trues = np.concatenate(trues_list, axis=0)
+    print('Test shapes after concatenation: preds={}, trues={}'.format(preds.shape, trues.shape))
+
+    mae, mse, rmse, mape, mspe = metric(preds, trues)
+    print(f'Test Metrics: MSE:{mse:.4f}, MAE:{mae:.4f}, RMSE:{rmse:.4f}, MAPE:{mape:.4f}, MSPE:{mspe:.4f}')
+
+    np.save(os.path.join(results_path, 'metrics.npy'), np.array([mae, mse, rmse, mape, mspe]))
+    np.save(os.path.join(results_path, 'pred.npy'), preds)
+    np.save(os.path.join(results_path, 'true.npy'), trues)
+
+    if len(interval_dates_test) >= preds.shape[0]:
+        pred_start_datetimes_test = interval_dates_test[:preds.shape[0]]
+        np.save(os.path.join(results_path, 'pred_start_dates.npy'), np.array(pred_start_datetimes_test, dtype=object))
+    else:
+        print(
+            f"Warning: Not enough interval_dates_test ({len(interval_dates_test)}) for all predictions ({preds.shape[0]}). Dates not saved.")
+
+    if preds.shape[0] > 0 and first_batch_input_x_for_plot is not None:
+        try:
+            gt_plot = np.concatenate((first_batch_input_x_for_plot, trues[0, :, 0]), axis=0)
+            pd_plot = np.concatenate((first_batch_input_x_for_plot, preds[0, :, 0]), axis=0)
+            visual(gt_plot, pd_plot, os.path.join(test_results_figures_path, 'sample_0_visualization.pdf'))
+            print(f"Saved visualization for the first test sample to {test_results_figures_path}")
+        except Exception as e:
+            print(f"Could not generate visualization: {e}")
+    else:
+        print("Not enough data to generate visualization or first_batch_input_x_for_plot was not captured.")
+
+    result_log_file = "result_custom_long_term_forecast.txt"
+    with open(result_log_file, 'a') as f:
+        f.write(setting + "  \n")
+        f.write(f'mse:{mse:.4f}, mae:{mae:.4f}, rmse:{rmse:.4f}, mape:{mape:.4f}, mspe:{mspe:.4f}')
+        f.write('\n')
+        f.write('\n')
+    print(f"Results logged to {result_log_file}")
+    print(f"--- Experiment Finished: {setting} ---")
+
+
+if __name__ == '__main__':
+    freeze_support()  # Important for Windows when using multiprocessing with spawn
+    main()
+# <<<< END MODIFICATION >>>>
