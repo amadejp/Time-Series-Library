@@ -1,0 +1,3 @@
+Finetuned_TimeXer_win336_stride24_scratch_20250604_171909  
+mse:0.0186, mae:0.0957, rmse:0.1364, mape:inf, mspe:inf
+

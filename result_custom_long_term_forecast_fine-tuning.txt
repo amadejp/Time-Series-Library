@@ -1,3 +1,6 @@
 Finetuned_TimeXer_win336_stride24_ft_from_checkpoint_20250604_171318  
 mse:0.0154, mae:0.0877, rmse:0.1240, mape:inf, mspe:inf
 
+Finetuned_TimeXer_win336_stride24_ft_from_checkpoint_20250604_172036  
+mse:0.0154, mae:0.0872, rmse:0.1240, mape:inf, mspe:inf
+

@@ -374,7 +374,7 @@ if __name__ == '__main__':
                         help='Path to pre-training dataset.')
     parser.add_argument('--pretrain_data_name', type=str, default="PretrainDataset",
                         help='Name for pre-training dataset.')
-    parser.add_argument('--pretrain_epochs', type=int, default=50, help='Epochs for pre-training.')
+    parser.add_argument('--pretrain_epochs', type=int, default=300, help='Epochs for pre-training.')
     parser.add_argument('--pretrain_lr', type=float, default=1e-4, help='Learning rate for pre-training.')
     parser.add_argument('--pretrain_patience', type=int, default=10, help='Early stopping patience for pre-training.')
 
