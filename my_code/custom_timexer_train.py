@@ -72,25 +72,12 @@ def main():
     X_history_test, X_known_past_test, X_known_future_test, y_test, interval_dates_test = load_data("test")
 
     # --- Configuration for TimeXer ---
-    model_id = "EV_TimeXer_Custom_336_24"
-    setting = '{}_{}_ft{}_sl{}_pl{}_dm{}_nh{}_el{}_df{}_eb{}_dt{}_{}'.format(
-        'horizon_features',
-        model_id,
-        'TimeXerCustom',
-        'MS',
-        336,
-        24,
-        256,
-        8,
-        2,
-        512,
-        'fixed',
-        False,
-        time.strftime("%Y%m%d_%H%M%S")
-    )
-    checkpoints_path = f'../checkpoints/{setting}/'
-    results_path = f'../results/{setting}/'
-    test_results_figures_path = f'../test_results/{setting}/'
+    win_len = 336
+    stride = 24
+    model_id = f"CustomTimexer_winlen{win_len}_stride{stride}_hpo_" + time.strftime("%Y%m%d_%H%M%S")
+    checkpoints_path = f'../checkpoints/{model_id}/'
+    results_path = f'../results/{model_id}/'
+    test_results_figures_path = f'../test_results/{model_id}/'
 
     # Create directories if they don't exist
     os.makedirs(checkpoints_path, exist_ok=True)
@@ -107,11 +94,11 @@ def main():
         enc_in=14,
         dec_in=13,
         c_out=1,
-        d_model=256,
-        n_heads=8,
-        e_layers=2,
-        d_ff=512,
-        dropout=0.15,
+        d_model=128,
+        n_heads=16,
+        e_layers=1,
+        d_ff=1024,
+        dropout=0.1,
         activation='gelu',
         factor=3,
         embed='fixed',
@@ -124,8 +111,8 @@ def main():
         data='customEV',
         des='CustomRun',
         patience=8,
-        learning_rate=0.0001,
-        train_epochs=120,
+        learning_rate=0.0004376,
+        train_epochs=300,
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -152,7 +139,7 @@ def main():
     early_stopping_checkpoint_path = os.path.join(checkpoints_path, 'checkpoint.pth')
     early_stopping = EarlyStopping(patience=configs.patience, verbose=True, path=early_stopping_checkpoint_path)
 
-    print(f"Starting training for setting: {setting}")
+    print(f"Starting training for setting: {model_id}")
     for epoch in range(configs.train_epochs):
         model.train()
         train_loss_epoch = []
@@ -257,12 +244,12 @@ def main():
 
     result_log_file = "result_custom_long_term_forecast.txt"
     with open(result_log_file, 'a') as f:
-        f.write(setting + "  \n")
+        f.write(model_id + "  \n")
         f.write(f'mse:{mse:.4f}, mae:{mae:.4f}, rmse:{rmse:.4f}, mape:{mape:.4f}, mspe:{mspe:.4f}')
         f.write('\n')
         f.write('\n')
     print(f"Results logged to {result_log_file}")
-    print(f"--- Experiment Finished: {setting} ---")
+    print(f"--- Experiment Finished: {model_id} ---")
 
 
 if __name__ == '__main__':

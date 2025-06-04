@@ -187,12 +187,17 @@ class Model(nn.Module):
         else:
             self.future_covariate_embedding = None
 
-        _head_nf_encoder_path = configs.d_model * (self.patch_num + 1)  # From en_embedding path
-        _head_nf_future_cov_path = 0
-        if self.future_covariate_embedding is not None:
-            _head_nf_future_cov_path = configs.d_model * configs.pred_len
+        self.head_nf_encoder_path_seq_len = self.patch_num + 1
+        self.head_nf_future_cov_path_seq_len = 0
+        if self.num_future_covariates > 0:  # Check based on actual num_future_covariates
+            self.future_covariate_embedding = nn.Linear(self.num_future_covariates, configs.d_model)
+            self.head_nf_future_cov_path_seq_len = configs.pred_len  # Future features exist for each pred step
+        else:
+            self.future_covariate_embedding = None
 
-        self.head_nf = _head_nf_encoder_path + _head_nf_future_cov_path
+        self.head_nf = configs.d_model * (self.head_nf_encoder_path_seq_len + self.head_nf_future_cov_path_seq_len)
+
+        self.head = FlattenHead(self.n_vars, self.head_nf, configs.pred_len, head_dropout=configs.dropout)
 
         # FlattenHead's n_vars should be self.n_vars (1 for MS, enc_in for M)
         # as it operates on the output of the main encoder stream for those variables.
