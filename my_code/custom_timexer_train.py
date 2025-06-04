@@ -16,7 +16,7 @@ from utils.tools import visual
 
 
 # --- Load Data Function ---
-def load_data(data_type, base_path="../my_data/train70_val10_test20_winlen120/"):
+def load_data(data_type, base_path="../my_data/train70_val10_test20_winlen336_stride24/"):
     X_history = np.load(f"{base_path}{data_type}/X_history_target.npy")
     X_known_past = np.load(f"{base_path}{data_type}/X_known_past_exog_features.npy")
     X_known_future = np.load(f"{base_path}{data_type}/X_known_future_exog_features.npy")
@@ -34,7 +34,7 @@ class EarlyStopping:
         self.counter = 0
         self.best_score = None
         self.early_stop = False
-        self.val_loss_min = np.Inf
+        self.val_loss_min = np.inf
         self.delta = delta
         self.path = path
         self.trace_func = trace_func
@@ -72,13 +72,13 @@ def main():
     X_history_test, X_known_past_test, X_known_future_test, y_test, interval_dates_test = load_data("test")
 
     # --- Configuration for TimeXer ---
-    model_id = "EV_TimeXer_Custom_120_24"
+    model_id = "EV_TimeXer_Custom_336_24"
     setting = '{}_{}_ft{}_sl{}_pl{}_dm{}_nh{}_el{}_df{}_eb{}_dt{}_{}'.format(
         'horizon_features',
         model_id,
         'TimeXerCustom',
         'MS',
-        120,
+        336,
         24,
         256,
         8,
@@ -100,7 +100,7 @@ def main():
     configs = Namespace(
         task_name='long_term_forecast',
         features='MS',
-        seq_len=120,
+        seq_len=336,
         pred_len=24,
         label_len=0,
         patch_len=24,
@@ -123,9 +123,9 @@ def main():
         model='TimeXerCustom',
         data='customEV',
         des='CustomRun',
-        patience=5,
+        patience=8,
         learning_rate=0.0001,
-        train_epochs=60,
+        train_epochs=120,
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
