@@ -184,10 +184,10 @@ def test_model(model, configs, test_loader, criterion, device, results_path, tes
 def main(args):
     # --- Base Configuration ---
     # These can be overridden by args if you make them command-line arguments
-    win_len = 336
+    win_len = 168
     stride = 24
     pred_len = 24
-    patch_len = 24
+    patch_len = 168
     enc_in_pretrain = 14
     enc_in_finetune = 14  # Your current dataset
     num_future_exo_pretrain = 13  # Example
@@ -197,7 +197,7 @@ def main(args):
     d_model = 128
     n_heads = 16
     e_layers = 1
-    d_ff = 1024
+    d_ff = 2048
     dropout = 0.1
     activation = 'gelu'
 
@@ -380,10 +380,10 @@ if __name__ == '__main__':
 
     # Fine-tuning Args
     parser.add_argument('--do_finetune', action='store_true', help='Flag to perform fine-tuning phase.')
-    parser.add_argument('--finetune_data_path', type=str, default="../my_data/train70_val10_test20_winlen336_stride24/",
+    parser.add_argument('--finetune_data_path', type=str, default="../my_data/train70_val10_test20_winlen168_stride24/",
                         help='Path to fine-tuning dataset.')
     parser.add_argument('--finetune_epochs', type=int, default=100, help='Epochs for fine-tuning.')
-    parser.add_argument('--finetune_lr', type=float, default=5e-5, help='Learning rate for fine-tuning.')
+    parser.add_argument('--finetune_lr', type=float, default=0.00049, help='Learning rate for fine-tuning.')
     parser.add_argument('--finetune_patience', type=int, default=8, help='Early stopping patience for fine-tuning.')
 
     # General Args

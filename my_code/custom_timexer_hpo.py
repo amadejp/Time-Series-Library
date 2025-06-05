@@ -225,7 +225,7 @@ if __name__ == '__main__':
 
     # 'n_trials' is the number of different hyperparameter combinations to test.
     # Start with a smaller number (e.g., 20) and increase as needed.
-    study.optimize(objective, n_trials=50)
+    study.optimize(objective, n_trials=100)
 
     # --- Print Optimization Results ---
     print("\n--- OPTIMIZATION FINISHED ---")
