@@ -16,7 +16,7 @@ from utils.tools import visual
 
 
 # --- Load Data Function ---
-def load_data(data_type, base_path="../my_data/train70_val10_test20_winlen336_stride24/"):
+def load_data(data_type, base_path="../my_data/train70_val10_test20_winlen336_stride24_workdays/"):
     X_history = np.load(f"{base_path}{data_type}/X_history_target.npy")
     X_known_past = np.load(f"{base_path}{data_type}/X_known_past_exog_features.npy")
     X_known_future = np.load(f"{base_path}{data_type}/X_known_future_exog_features.npy")
@@ -74,7 +74,7 @@ def main():
     # --- Configuration for TimeXer ---
     win_len = 336
     stride = 24
-    model_id = f"CustomTimexer_winlen{win_len}_stride{stride}_hpo_" + time.strftime("%Y%m%d_%H%M%S")
+    model_id = f"CustomTimexer_winlen{win_len}_stride{stride}_workdays_" + time.strftime("%Y%m%d_%H%M%S")
     checkpoints_path = f'../checkpoints/{model_id}/'
     results_path = f'../results/{model_id}/'
     test_results_figures_path = f'../test_results/{model_id}/'
@@ -105,7 +105,7 @@ def main():
         freq='h',
         use_norm=False,
         inverse=False,
-        checkpoints=checkpoints_path.rsplit('/', 1)[0] + '/',  # Corrected parent dir
+        checkpoints=checkpoints_path.rsplit('/', 1)[0] + '/',
         model_id=model_id,
         model='TimeXerCustom',
         data='customEV',

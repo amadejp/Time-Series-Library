@@ -17,7 +17,7 @@ from utils.tools import visual
 
 
 # --- Load Data Function (unchanged) ---
-def load_data(data_type, base_path="../my_data/train70_val10_test20_winlen168_stride24/"):
+def load_data(data_type, base_path="../my_data/train70_val10_test20_winlen336_stride24_workdays/"):
     X_history = np.load(f"{base_path}{data_type}/X_history_target.npy")
     X_known_past = np.load(f"{base_path}{data_type}/X_known_past_exog_features.npy")
     X_known_future = np.load(f"{base_path}{data_type}/X_known_future_exog_features.npy")
@@ -69,7 +69,7 @@ def objective(trial):
     # --- Suggest Hyperparameters ---
     # This section defines the search space for Optuna.
     # It will pick a value for each hyperparameter for each trial.
-    d_model = trial.suggest_categorical('d_model', [128, 256, 512])
+    d_model = trial.suggest_categorical('d_model', [64, 128, 256, 512])
     n_heads = trial.suggest_categorical('n_heads', [4, 8, 16])
 
     # Ensure d_model is divisible by n_heads
@@ -78,8 +78,8 @@ def objective(trial):
         raise optuna.exceptions.TrialPruned(f"d_model {d_model} not divisible by n_heads {n_heads}")
 
     # For patch_len, ensure seq_len (336) is divisible by it.
-    seq_len = 168
-    patch_len = trial.suggest_categorical('patch_len', [12, 24, 42, 84, 168])
+    seq_len = 336
+    patch_len = trial.suggest_categorical('patch_len', [12, 24, 48, 84, 112, 168, 336])
     if seq_len % patch_len != 0:
         raise optuna.exceptions.TrialPruned(f"seq_len {seq_len} not divisible by patch_len {patch_len}")
 

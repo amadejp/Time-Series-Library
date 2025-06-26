@@ -10,3 +10,6 @@ mse:0.0222, mae:0.1053, rmse:0.1489, mape:inf, mspe:inf
 CustomTimexer_winlen336_stride24_hpo_20250604_160209  
 mse:0.0194, mae:0.0998, rmse:0.1393, mape:inf, mspe:inf
 
+CustomTimexer_winlen336_stride24_workdays_20250626_132815  
+mse:0.0206, mae:0.1094, rmse:0.1437, mape:inf, mspe:inf
+
