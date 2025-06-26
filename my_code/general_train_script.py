@@ -10,7 +10,8 @@ import time
 from multiprocessing import freeze_support
 
 # --- Model Imports ---
-# Corrected the import for TFT to match the library's typical structure
+# All models are now imported cleanly from the models directory
+from models.TimeXer import Model as TimeXerModel
 from models.TemporalFusionTransformer import Model as TFTModel
 from models.Informer import Model as InformerModel
 from models.Autoformer import Model as AutoformerModel
@@ -37,25 +38,15 @@ class CustomDataset(Dataset):
         return len(self.x_history)
 
     def __getitem__(self, idx):
-        # x_enc: Historical target values. Shape: [seq_len, 1]
         x_enc = self.x_history[idx]
-
-        # y: Future target values. Shape: [pred_len, 1]
         batch_y = self.y[idx]
-
-        # x_mark_enc: Historical known features. Shape: [seq_len, 13]
         x_mark_enc = self.x_known_past[idx]
 
-        # x_mark_dec: Future known features + historical context for decoder
-        # Start with the last `label_len` part of historical known features
         dec_inp_mark_start = x_mark_enc[-self.label_len:, :] if self.label_len > 0 else torch.empty(0, x_mark_enc.shape[
             -1])
-        # Concatenate with the future known features
         x_mark_dec = torch.cat([dec_inp_mark_start, self.x_known_future[idx]], dim=0)
 
-        # x_dec: Decoder input. A mix of history and placeholder zeros.
         dec_inp_val_start = x_enc[-self.label_len:, :] if self.label_len > 0 else torch.empty(0, x_enc.shape[-1])
-        # The placeholder should match the number of target variables (which is 1)
         dec_inp_val_future = torch.zeros(self.pred_len, x_enc.shape[-1], dtype=torch.float32)
         x_dec = torch.cat([dec_inp_val_start, dec_inp_val_future], dim=0)
 
@@ -100,106 +91,43 @@ class EarlyStopping:
 
 
 def get_model_and_configs(model_name):
-    """Returns the model class and its configuration namespace based on the new data structure."""
-
-    # --- Base Configurations ---
     base_configs = {
-        'task_name': 'long_term_forecast',
-        'features': 'S',  # Single variate predict Single variate
-        'seq_len': 336,
-        'pred_len': 24,
-        'enc_in': 1,  # CRITICAL: Only the target variable is in x_enc
-        'dec_in': 1,  # CRITICAL: Only the target variable is in x_dec
-        'c_out': 1,  # CRITICAL: We are predicting a single target variable
-        'freq': 'h',
-        'dropout': 0.1,
-        'patience': 8,
-        'train_epochs': 100,
+        'task_name': 'long_term_forecast', 'features': 'S', 'seq_len': 336, 'pred_len': 24,
+        'enc_in': 1, 'dec_in': 1, 'c_out': 1, 'freq': 'h', 'dropout': 0.1, 'patience': 8, 'train_epochs': 100
     }
 
-    # --- Model-Specific Configurations ---
     model_configs = {
-        'TFT': {
-            'model': 'TFT',
-            'data': 'customEV',
-            'label_len': 0,
-            'd_model': 128,
-            'n_heads': 8,
-            'e_layers': 1,
-            'd_ff': 512,
-            'activation': 'gelu',
-            'embed': 'timeF',
-            'learning_rate': 0.0001,
-        },
-        'Informer': {
-            'model': 'Informer',
-            'label_len': 48,
-            'd_model': 512,
-            'n_heads': 8,
-            'e_layers': 2,
-            'd_layers': 1,
-            'd_ff': 2048,
-            'activation': 'gelu',
-            'embed': 'timeF',
-            'factor': 3,
-            'learning_rate': 0.0001,
-        },
-        'Autoformer': {
-            'model': 'Autoformer',
-            'label_len': 48,
-            'd_model': 512,
-            'n_heads': 8,
-            'e_layers': 2,
-            'd_layers': 1,
-            'd_ff': 2048,
-            'activation': 'gelu',
-            'embed': 'timeF',
-            'factor': 3,
-            'learning_rate': 0.0001,
-            'moving_avg': 25,
-        },
-        'PatchTST': {
-            'model': 'PatchTST',
-            'label_len': 0,
-            'd_model': 128,
-            'n_heads': 16,
-            'e_layers': 3,
-            'd_ff': 256,
-            'activation': 'gelu',
-            'learning_rate': 0.0001,
-            'patch_len': 24,
-            'stride': 12,
-            'revin': 1,
-            'factor': 3,
-        },
-        'DLinear': {
-            'model': 'DLinear',
-            'label_len': 0,
-            'learning_rate': 0.001,
-            'individual': False,
-        }
+        'TimeXer': {'model': 'TimeXer', 'label_len': 0, 'd_model': 128, 'n_heads': 8, 'e_layers': 1, 'd_ff': 256,
+                    'activation': 'gelu', 'embed': 'timeF', 'factor': 3, 'patch_len': 24, 'learning_rate': 0.0001,
+                    'use_norm': True},
+        'TFT': {'model': 'TFT', 'data': 'customEV', 'label_len': 0, 'd_model': 128, 'n_heads': 8, 'e_layers': 1,
+                'd_ff': 512, 'activation': 'gelu', 'embed': 'timeF', 'learning_rate': 0.0001},
+        'Informer': {'model': 'Informer', 'label_len': 48, 'd_model': 512, 'n_heads': 8, 'e_layers': 2, 'd_layers': 1,
+                     'd_ff': 2048, 'activation': 'gelu', 'embed': 'timeF', 'factor': 3, 'learning_rate': 0.0001},
+        'Autoformer': {'model': 'Autoformer', 'label_len': 48, 'd_model': 512, 'n_heads': 8, 'e_layers': 2,
+                       'd_layers': 1, 'd_ff': 2048, 'activation': 'gelu', 'embed': 'timeF', 'factor': 3,
+                       'learning_rate': 0.0001, 'moving_avg': 25},
+        'PatchTST': {'model': 'PatchTST', 'label_len': 0, 'd_model': 128, 'n_heads': 16, 'e_layers': 3, 'd_ff': 256,
+                     'activation': 'gelu', 'learning_rate': 0.0001, 'patch_len': 24, 'stride': 12, 'revin': 1,
+                     'factor': 3},
+        'DLinear': {'model': 'DLinear', 'label_len': 0, 'learning_rate': 0.001, 'individual': False}
     }
 
     MODEL_CLASSES = {
-        'TFT': TFTModel,
-        'Informer': InformerModel,
-        'Autoformer': AutoformerModel,
-        'PatchTST': PatchTSTModel,
-        'DLinear': DLinearModel,
+        'TimeXer': TimeXerModel, 'TFT': TFTModel, 'Informer': InformerModel, 'Autoformer': AutoformerModel,
+        'PatchTST': PatchTSTModel, 'DLinear': DLinearModel,
     }
 
     if model_name not in MODEL_CLASSES:
         raise ValueError(f"Model '{model_name}' not recognized. Available: {list(MODEL_CLASSES.keys())}")
 
     final_configs = {**base_configs, **model_configs[model_name]}
-    configs_ns = Namespace(**final_configs)
-
-    return MODEL_CLASSES[model_name], configs_ns
+    return MODEL_CLASSES[model_name], Namespace(**final_configs)
 
 
 def run_experiment():
     # --- CHOOSE YOUR MODEL HERE ---
-    model_name = 'PatchTST'  # Options: 'TFT', 'Informer', 'Autoformer', 'PatchTST', 'DLinear'
+    model_name = 'TimeXer'  # Options: 'TimeXer', 'TFT', 'Informer', 'Autoformer', 'PatchTST', 'DLinear'
 
     ModelClass, configs = get_model_and_configs(model_name)
 
@@ -271,7 +199,7 @@ def run_experiment():
             outputs = model(batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec)
             loss = criterion(outputs, batch_y)
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)  # Gradient clipping
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
             train_loss_epoch.append(loss.item())
 
