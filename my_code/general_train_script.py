@@ -10,7 +10,8 @@ import time
 from multiprocessing import freeze_support
 
 # --- Model Imports ---
-from models.TFT import Model as TFTModel
+# Corrected the import for TFT to match the library's typical structure
+from models.TemporalFusionTransformer import Model as TFTModel
 from models.Informer import Model as InformerModel
 from models.Autoformer import Model as AutoformerModel
 from models.PatchTST import Model as PatchTSTModel
@@ -159,7 +160,7 @@ def get_model_and_configs(model_name):
         },
         'PatchTST': {
             'model': 'PatchTST',
-            'label_len': 0,  # PatchTST doesn't need label_len
+            'label_len': 0,
             'd_model': 128,
             'n_heads': 16,
             'e_layers': 3,
@@ -169,12 +170,13 @@ def get_model_and_configs(model_name):
             'patch_len': 24,
             'stride': 12,
             'revin': 1,
+            'factor': 3,
         },
         'DLinear': {
             'model': 'DLinear',
             'label_len': 0,
             'learning_rate': 0.001,
-            'individual': False,  # Set to False for univariate forecasting
+            'individual': False,
         }
     }
 
