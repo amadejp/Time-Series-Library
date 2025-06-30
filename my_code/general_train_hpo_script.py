@@ -70,7 +70,8 @@ class EarlyStopping:
         elif score < self.best_score + self.delta:
             self.counter += 1
             if self.verbose: self.trace_func(f'EarlyStopping counter: {self.counter} out of {self.patience}')
-            if self.counter >= self.patience: self.early_stop = True
+            if self.counter >= self.patience:
+                self.early_stop = True
         else:
             self.best_score = score
             self.save_checkpoint(val_loss, model)
@@ -113,9 +114,9 @@ def get_model_and_configs(model_name, trial=None):
 
     # --- Default Model Configurations ---
     default_configs = {
-        'TimeXer': {'model': 'TimeXer', 'label_len': 0, 'd_model': 128, 'n_heads': 8, 'e_layers': 1, 'd_ff': 512,
-                    'activation': 'gelu', 'embed': 'timeF', 'factor': 3, 'patch_len': 24, 'learning_rate': 0.000235,
-                    'use_norm': True, 'dropout': 0.06},
+        'TimeXer': {'model': 'TimeXer', 'label_len': 0, 'd_model': 128, 'n_heads': 8, 'e_layers': 1, 'd_ff': 256,
+                    'activation': 'gelu', 'embed': 'timeF', 'factor': 3, 'patch_len': 24, 'learning_rate': 0.0001,
+                    'use_norm': True, 'dropout': 0.1},
         'TFT': {'model': 'TFT', 'data': 'customEV', 'label_len': 0, 'd_model': 128, 'n_heads': 8, 'e_layers': 1,
                 'd_ff': 512, 'activation': 'gelu', 'embed': 'timeF', 'learning_rate': 0.0001, 'dropout': 0.1},
         'Informer': {'model': 'Informer', 'label_len': 48, 'd_model': 512, 'n_heads': 8, 'e_layers': 2, 'd_layers': 1,
@@ -140,7 +141,7 @@ def get_model_and_configs(model_name, trial=None):
 
     final_configs = {**base_configs, **default_configs[model_name]}
 
-    if trial:  # If in HPO mode
+    if trial:
         if model_name not in search_spaces:
             print(f"Warning: HPO search space not defined for {model_name}. Using default parameters.")
         else:
@@ -151,15 +152,12 @@ def get_model_and_configs(model_name, trial=None):
 
 
 def objective(trial, model_name, train_loader, val_loader, device):
-    """Optuna objective function for a single HPO trial."""
-    # Generate model and configs for this trial
     ModelClass, configs = get_model_and_configs(model_name, trial)
-    configs.train_epochs = 20  # Train for fewer epochs during HPO
+    configs.train_epochs = 20
 
     model = ModelClass(configs).to(device)
     optimizer = optim.Adam(model.parameters(), lr=configs.learning_rate)
     criterion = nn.MSELoss()
-
     best_val_loss = float('inf')
 
     for epoch in range(configs.train_epochs):
@@ -175,7 +173,6 @@ def objective(trial, model_name, train_loader, val_loader, device):
             loss.backward()
             optimizer.step()
 
-        # Validation
         model.eval()
         val_loss_epoch = []
         with torch.no_grad():
@@ -192,7 +189,6 @@ def objective(trial, model_name, train_loader, val_loader, device):
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
 
-        # Pruning: Report intermediate results to Optuna
         trial.report(avg_val_loss, epoch)
         if trial.should_prune():
             raise optuna.exceptions.TrialPruned()
@@ -202,9 +198,9 @@ def objective(trial, model_name, train_loader, val_loader, device):
 
 def run_experiment():
     # --- TOP-LEVEL CONTROLS ---
-    model_name = 'PatchTST'  # Options: 'TimeXer', 'TFT', 'Informer', 'Autoformer', 'PatchTST', 'DLinear'
-    PERFORM_HPO = False  # Set to True to run HPO, False to use defaults
-    N_TRIALS = 100  # Number of HPO trials to run
+    model_name = 'PatchTST'
+    PERFORM_HPO = False
+    N_TRIALS = 100
 
     # --- Load Data Once ---
     print("--- Loading Data ---")
@@ -231,7 +227,6 @@ def run_experiment():
     best_params = {}
     if PERFORM_HPO:
         print(f"--- Starting HPO for {model_name} ---")
-        # We only need default configs to create the dataloaders for the objective function
         _, temp_configs = get_model_and_configs(model_name)
         train_dataset = CustomDataset(X_history_train, X_known_past_train, X_known_future_train, y_train, temp_configs)
         val_dataset = CustomDataset(X_history_val, X_known_past_val, X_known_future_val, y_val, temp_configs)
@@ -249,13 +244,17 @@ def run_experiment():
     # --- Final Training and Evaluation Phase ---
     print("\n--- Starting Final Training with Best/Default Parameters ---")
     ModelClass, configs = get_model_and_configs(model_name)
-    if best_params:  # If HPO was run, update configs with best params
+    if best_params:
         for key, value in best_params.items():
             setattr(configs, key, value)
 
-    model_id = f"{configs.model}_final_seq{configs.seq_len}_pred{configs.pred_len}_{time.strftime('%Y%m%d_%H%M%S')}"
+    # <<< CHANGE: Create paths for both checkpoints and results ---
+    run_type = "hpo_best" if PERFORM_HPO else "default"
+    model_id = f"{configs.model}_{run_type}_seq{configs.seq_len}_pred{configs.pred_len}_{time.strftime('%Y%m%d_%H%M%S')}"
     checkpoints_path = f'../checkpoints/{model_id}/'
+    results_path = f'../results/{model_id}/'  # Create a matching results folder
     os.makedirs(checkpoints_path, exist_ok=True)
+    os.makedirs(results_path, exist_ok=True)  # And create it
 
     train_dataset = CustomDataset(X_history_train, X_known_past_train, X_known_future_train, y_train, configs)
     val_dataset = CustomDataset(X_history_val, X_known_past_val, X_known_future_val, y_val, configs)
@@ -275,16 +274,15 @@ def run_experiment():
 
     for epoch in range(configs.train_epochs):
         model.train()
-        # (Same training loop as before)
         for (batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec, batch_y) in train_loader:
             batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec, batch_y = [d.to(device) for d in
                                                                                      [batch_x_enc, batch_x_mark_enc,
                                                                                       batch_x_dec, batch_x_mark_dec,
                                                                                       batch_y]]
-            optimizer.zero_grad();
-            outputs = model(batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec);
-            loss = criterion(outputs, batch_y);
-            loss.backward();
+            optimizer.zero_grad()
+            outputs = model(batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec)
+            loss = criterion(outputs, batch_y)
+            loss.backward()
             optimizer.step()
 
         model.eval()
@@ -295,19 +293,18 @@ def run_experiment():
                                                                                          [batch_x_enc, batch_x_mark_enc,
                                                                                           batch_x_dec, batch_x_mark_dec,
                                                                                           batch_y]]
-                outputs = model(batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec);
-                loss = criterion(outputs, batch_y);
+                outputs = model(batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec)
+                loss = criterion(outputs, batch_y)
                 val_loss_epoch.append(loss.item())
 
         avg_val_loss = np.average(val_loss_epoch)
         print(f"Epoch [{epoch + 1}/{configs.train_epochs}] -> Val Loss: {avg_val_loss:.4f}")
         early_stopping(avg_val_loss, model)
         if early_stopping.early_stop:
-            print("Early stopping triggered.");
+            print("Early stopping triggered.")
             break
 
     # --- Final Testing ---
-    # (Same testing loop as before)
     print("\n--- Loading best model for final testing ---")
     best_model_path = os.path.join(checkpoints_path, 'checkpoint.pth')
     if os.path.exists(best_model_path):
@@ -315,11 +312,9 @@ def run_experiment():
     else:
         print("Warning: Checkpoint not found.")
 
-    # ... The rest of the testing and result saving code ...
     print(f"\n--- Final testing for {configs.model} ---")
     model.eval()
-    preds_list = []
-    trues_list = []
+    preds_list, trues_list = [], []
     with torch.no_grad():
         for i, (batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec, batch_y) in enumerate(test_loader):
             batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec, batch_y = [d.to(device) for d in
@@ -329,10 +324,27 @@ def run_experiment():
             outputs = model(batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec)
             preds_list.append(outputs.detach().cpu().numpy())
             trues_list.append(batch_y.detach().cpu().numpy())
+
     preds = np.concatenate(preds_list, axis=0)
     trues = np.concatenate(trues_list, axis=0)
     mae, mse, rmse, mape, mspe = metric(preds, trues)
     print(f'Final Test Metrics: MSE:{mse:.4f}, MAE:{mae:.4f}')
+
+    # <<< NEW: Save all results to the dedicated subfolder ---
+    print(f"Saving results to {results_path}")
+    np.save(os.path.join(results_path, 'metrics.npy'), np.array([mae, mse, rmse, mape, mspe]))
+    np.save(os.path.join(results_path, 'pred.npy'), preds)
+    np.save(os.path.join(results_path, 'true.npy'), trues)
+
+    try:
+        gt_plot = np.concatenate((X_history_test[0, :, 0], trues[0, :, 0]), axis=0)
+        pd_plot = np.concatenate((X_history_test[0, :, 0], preds[0, :, 0]), axis=0)
+        visual(gt_plot, pd_plot, os.path.join(results_path, 'sample_0_visualization.pdf'))
+        print(f"Saved visualization for the first test sample to {results_path}")
+    except Exception as e:
+        print(f"Could not generate visualization: {e}")
+
+    print(f"--- Experiment Finished: {model_id} ---")
 
 
 if __name__ == '__main__':

@@ -105,17 +105,17 @@ def main():
         label_len=0,  # Your PreprocessedDataset likely handles this split already
         enc_in=14,  # Total number of features in the input encoder (1 target + 13 covariates)
         c_out=1,  # The number of final output features (just the target)
-        d_model=128,
-        n_heads=4,  # TFT often uses fewer heads than standard transformers
+        d_model=256,
+        n_heads=16,  # TFT often uses fewer heads than standard transformers
         e_layers=2,  # TFT has its own complex block structure, often 1-2 layers are enough
-        d_ff=512,
+        d_ff=256,
         dropout=0.12,
         activation='gelu',
         embed='timeF',  # timeF is standard for TFT
         freq='h',
         # --- Training Configs ---
         patience=8,
-        learning_rate=0.0002,
+        learning_rate=0.00028,
         train_epochs=100,
         # --- Path Configs ---
         checkpoints=checkpoints_path,
@@ -132,7 +132,7 @@ def main():
     val_dataset = PreprocessedDataset(X_history_val, X_known_past_val, X_known_future_val, y_val)
     test_dataset = PreprocessedDataset(X_history_test, X_known_past_test, X_known_future_test, y_test)
 
-    batch_size = 32
+    batch_size = 16
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0,
                               pin_memory=True if device.type == 'cuda' else False)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0,

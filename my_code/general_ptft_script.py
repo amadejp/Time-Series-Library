@@ -168,7 +168,7 @@ def train_one_phase(phase_name, model, configs, train_loader, val_loader, device
 
 def run_finetuning_experiment():
     # --- TOP-LEVEL CONTROLS ---
-    model_name = 'TimeXer'
+    model_name = 'PatchTST'
     pretrain_data_path = "../my_data/caltech/train70_val10_test20_winlen336_stride24_workdays/"
     finetune_data_path = "../my_data/train70_val10_test20_winlen336_stride24_workdays/"
 

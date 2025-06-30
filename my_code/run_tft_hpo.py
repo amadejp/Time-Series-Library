@@ -77,21 +77,20 @@ def objective(trial, train_data, val_data, base_configs, device):
     This function trains a model for one set of hyperparameters and returns the validation loss.
     """
     # --- 1. Define Hyperparameter Search Space ---
-    # We use the 'trial' object to suggest values for our hyperparameters.
     trial_configs = base_configs
     trial_configs.learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True)
     trial_configs.dropout = trial.suggest_float("dropout", 0.05, 0.4)
     trial_configs.d_model = trial.suggest_categorical("d_model", [64, 128, 256])
 
-    # n_heads must be a divisor of d_model. We handle this constraint here.
-    if trial_configs.d_model == 64:
-        n_heads = trial.suggest_categorical("n_heads", [2, 4, 8])
-    elif trial_configs.d_model == 128:
-        n_heads = trial.suggest_categorical("n_heads", [2, 4, 8])
-    else:  # d_model == 256
-        n_heads = trial.suggest_categorical("n_heads", [4, 8, 16])
-    trial_configs.n_heads = n_heads
+    # Step 1: Suggest n_heads from a superset of all possible values.
+    n_heads = trial.suggest_categorical("n_heads", [2, 4, 8, 16])
 
+    # Step 2: Check if the combination is valid. If not, prune the trial.
+    if trial_configs.d_model % n_heads != 0:
+        # This combination is invalid, so we stop this trial early.
+        raise optuna.exceptions.TrialPruned()
+
+    trial_configs.n_heads = n_heads
     trial_configs.d_ff = trial.suggest_categorical("d_ff", [256, 512, 1024])
     trial_configs.e_layers = trial.suggest_int("e_layers", 1, 2)
     batch_size = trial.suggest_categorical("batch_size", [16, 32, 64])
@@ -102,6 +101,7 @@ def objective(trial, train_data, val_data, base_configs, device):
           f"e_layers={trial_configs.e_layers}, batch_size={batch_size}")
 
     # --- 2. Setup Dataloaders, Model, Optimizer for this trial ---
+    # (The rest of your function remains exactly the same)
     X_history_train, X_known_past_train, X_known_future_train, y_train = train_data
     X_history_val, X_known_past_val, X_known_future_val, y_val = val_data
 
@@ -116,14 +116,12 @@ def objective(trial, train_data, val_data, base_configs, device):
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=trial_configs.learning_rate)
 
-    # We don't need to save checkpoints for HPO trials, just get the best loss
     early_stopping = EarlyStopping(patience=trial_configs.patience, verbose=False)
 
     # --- 3. Training and Validation Loop ---
     for epoch in range(trial_configs.train_epochs):
         model.train()
         for i, (batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec, batch_y) in enumerate(train_loader):
-            # ... (standard training step) ...
             batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec, batch_y = \
                 map(lambda x: x.to(device), [batch_x_enc, batch_x_mark_enc, batch_x_dec, batch_x_mark_dec, batch_y])
 
@@ -153,22 +151,17 @@ def objective(trial, train_data, val_data, base_configs, device):
         print(f"  Epoch {epoch + 1}/{trial_configs.train_epochs}, Val Loss: {avg_val_loss:.6f}")
 
         # --- 4. Report to Optuna and Handle Pruning/Early Stopping ---
-        # Report the validation loss to Optuna for this epoch
         trial.report(avg_val_loss, epoch)
-
-        # Check if Optuna suggests pruning (stopping this unpromising trial early)
         if trial.should_prune():
-            print(f"  Trial {trial.number} pruned at epoch {epoch + 1}.")
+            print(f"  Trial {trial.number} pruned by Optuna pruner at epoch {epoch + 1}.")
             raise optuna.exceptions.TrialPruned()
 
-        # Use our own EarlyStopping logic as well
         early_stopping(avg_val_loss, model)
         if early_stopping.early_stop:
             print(f"  Early stopping triggered at epoch {epoch + 1}.")
             break
 
     # --- 5. Return the best validation loss for this trial ---
-    # `val_loss_min` is the best validation loss recorded by the EarlyStopping callback
     return early_stopping.val_loss_min
 
 
