@@ -31,7 +31,6 @@ def load_data(data_type, base_path="../my_data/train70_val10_test20_winlen336_st
     return X_history, X_known_past, X_known_future, y, interval_dates
 
 
-# --- Early Stopping Class (same as your script) ---
 class EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
 
@@ -53,7 +52,6 @@ class EarlyStopping:
             self.save_checkpoint(val_loss, model)
         elif score < self.best_score + self.delta:
             self.counter += 1
-            self.trace_func(f'EarlyStopping counter: {self.counter} out of {self.patience}')
             if self.counter >= self.patience:
                 self.early_stop = True
         else:
@@ -65,9 +63,13 @@ class EarlyStopping:
         """Saves model when validation loss decreases."""
         if self.verbose:
             self.trace_func(
-                f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}).  Saving model ...')
-        # Ensure the directory for the path exists
-        os.makedirs(os.path.dirname(self.path), exist_ok=True)
+                f'Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f}). Saving model...')
+
+        # Only create a directory if a directory path is specified
+        dir_name = os.path.dirname(self.path)
+        if dir_name:  # This check prevents calling makedirs with an empty string
+            os.makedirs(dir_name, exist_ok=True)
+
         torch.save(model.state_dict(), self.path)
         self.val_loss_min = val_loss
 
@@ -104,16 +106,16 @@ def main():
         enc_in=14,  # Total number of features in the input encoder (1 target + 13 covariates)
         c_out=1,  # The number of final output features (just the target)
         d_model=128,
-        n_heads=8,  # TFT often uses fewer heads than standard transformers
-        e_layers=1,  # TFT has its own complex block structure, often 1-2 layers are enough
+        n_heads=4,  # TFT often uses fewer heads than standard transformers
+        e_layers=2,  # TFT has its own complex block structure, often 1-2 layers are enough
         d_ff=512,
-        dropout=0.1,
+        dropout=0.12,
         activation='gelu',
         embed='timeF',  # timeF is standard for TFT
         freq='h',
         # --- Training Configs ---
         patience=8,
-        learning_rate=0.0001,  # TFT can be sensitive to learning rate, starting lower is often safer
+        learning_rate=0.0002,
         train_epochs=100,
         # --- Path Configs ---
         checkpoints=checkpoints_path,
