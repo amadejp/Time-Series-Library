@@ -1,0 +1,9 @@
+Best trial value (min validation loss): 0.015815282240509987
+Best parameters:
+  learning_rate: 0.00040484164668150253
+  dropout: 0.33894120257341415
+  d_model: 256
+  n_heads: 8
+  d_ff: 512
+  e_layers: 2
+  batch_size: 32
